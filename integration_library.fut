@@ -18,24 +18,18 @@ module type derivative = {
   type vec
   val f: {x: f64, y: f64} -> f64
   val make_ic: {x:f64, y:f64, dx: f64} -> vec
-  val compute_y1: vec -> (f64,f64,f64)
 }
 
-module runge_kutta: derivative = {
+
+module runge_kutta (f_input: derivative) = {
     type t = f64
     type vec = {x: f64, y: f64, dx: f64}
 
-    def make_ic {x: f64, y:f64, dx: f64} = {x, y, dx}
-
-    def f {x: t, y: t}: t = 
-        let f = x*y
-        in f
-
     def compute_y1 {x = x0: t, y = y0: t, dx: t} : (t,t,t) =
-        let k1 = f {x = x0, y = y0}
-        let k2 = f {x = x0 + dx / 2.0, y = y0 + dx * k1 / 2.0}
-        let k3 = f {x = x0 + dx / 2.0, y = y0 + dx * k2 / 2.0}
-        let k4 = f {x = x0 + dx, y = y0 + dx * k3}
+        let k1 = f_input.f {x = x0, y = y0}
+        let k2 = f_input.f {x = x0 + dx / 2.0, y = y0 + dx * k1 / 2.0}
+        let k3 = f_input.f {x = x0 + dx / 2.0, y = y0 + dx * k2 / 2.0}
+        let k4 = f_input.f {x = x0 + dx, y = y0 + dx * k3}
         
         let y1 = y0 + dx / 6.0 * (k1 + 2.0*k2 + 2.0 * k3 + k4)
         let x1 = x0 + dx
@@ -43,12 +37,25 @@ module runge_kutta: derivative = {
         in (x1, y1, dx)
 }
 
+module dxdt = {
+    type t = f64
+    type vec = {x: f64, y: f64, dx: f64}
+
+    def make_ic {x: f64, y:f64, dx: f64} = {x, y, dx}
+
+    let f {x: t, y: t}: t = 
+        let f = x*y -- Define module as an input for f?
+        in f
+}
+
+module runge_kutta_over_func = runge_kutta(dxdt)
+
 def main (x0: f64) (y0: f64) (dx: f64) (n: i64): ([n]f64, [n]f64, [n]f64) =
     let ic_arr = replicate n ( (x0, y0, dx) )
     let y_arr = loop ic_arr for i < n - 1 do
         let (x0,y0,dx) = ic_arr[i] 
-        let vec_ic = runge_kutta.make_ic {x = x0, y = y0, dx = dx}
-        let (x1,y1,dx) = runge_kutta.compute_y1 vec_ic
+        let vec_ic = dxdt.make_ic {x = x0, y = y0, dx = dx}
+        let (x1,y1,dx) = runge_kutta_over_func.compute_y1 vec_ic
         let ic_arr[i+1] = (x1,y1,dx)
         in ic_arr
     in unzip3(y_arr)
