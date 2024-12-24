@@ -82,7 +82,7 @@ module simpsons(f_input: integral) = {
 
         -- Sum over even and odd indices of an array via reduce
         let odd_sum   = reduce (+) 0 f_grid[1::2]
-        let even_sum  = reduce (+) 0 f_grid[::2]
+        let even_sum  = reduce (+) 0 f_grid[2::2]
 
         -- Compute the final sum
         let final_sum = 1.0 / 3.0 * dx * ( f_grid[0] + 4.0 * odd_sum + 2.0 * even_sum + last(f_grid)) 
@@ -111,7 +111,7 @@ module integrand = {
 
     def set_bounds (a: f64) (b: f64) (n: i64) = (a, b, n)
 
-    let f (x: t): t = x
+    let f (x: t): t = x**2 + 2*x + 3
 }
 
 module simpsons_over_func = simpsons(integrand) 
