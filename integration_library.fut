@@ -26,9 +26,9 @@ module type derivative = {
 module type derivative_vec = {
   type vec
   type s
-  val n: i64
-  val f: {x: f64, y: [n]f64} -> [n]f64
-  val make_ic: {x:f64, y: [n]f64, dx: f64} -> vec
+
+  val f: {x: f64, y: [2]f64} -> [2]f64
+  val make_ic: {x:f64, y: [2]f64, dx: f64} -> vec
 }
 -- 4th order Runge-Kutta solver module with abstract dx/dy = f(x,y)
 module runge_kutta (f_input: derivative) = {
@@ -49,11 +49,12 @@ module runge_kutta (f_input: derivative) = {
 
 -- 4th order Runge-Kutta solver module with abstract dx/dy = f(x,y)
 module runge_kutta_vec (f_input: derivative_vec) = {
+    open f_input
     type t = f64
-    type s = i64
-    type vec = {x: f64, y: [f_input.n]f64, dx: f64, n: i64}
-
-    def compute_y1 {x = xi: t, y = yi: []t, dx: t, n: s} : (t,[f_input.n]t,t,s) =
+    type s = [2]f64
+    type vec = {x: f64, y: [2]f64, dx: f64}
+    
+    def compute_y1 {x = xi: t, y = yi: s, dx: t} : (f64,s,f64) =
         let k1 = f_input.f {x = xi, y = yi}
         let k2 = f_input.f {x = xi + dx / 2.0, y = map2 (\x y -> x + dx/2.0 * y) yi k1}
         let k3 = f_input.f {x = xi + dx / 2.0, y = map2 (\x y -> x + dx/2.0 * y) yi k2}
@@ -62,17 +63,17 @@ module runge_kutta_vec (f_input: derivative_vec) = {
         let yf = map2(\x y -> x + dx/6.0 * y) yi (map4 (\x y z w -> x + 2.0 * y + 2.0 * z + w) k1 k2 k3 k4)
         let xf = xi + dx
 
-        in (xf, yf, dx, n)
+        in (xf, yf, dx)
 }
 
 -- Exact form of dx/dy = f(x,y)
 module dxdy = {
-    type t = f64
-    type vec = {x: f64, y: f64, dx: f64}
-    let n: i64 = 2
-    def make_ic {x: f64, y:f64, dx: f64} = {x, y, dx}
+    type s = [2]f64
+    type vec = {x: f64, y: [2]f64, dx: f64}
 
-    let f {x: t, y: []t}: t = [x*y[0] + y[1], y[1]]
+    def make_ic {x: f64, y: [2]f64, dx: f64} = {x, y, dx}
+
+    let f {x: f64, y: [2]f64}: [2]f64 = [x*y[0] + y[1], y[1]]
 }
 
 -- Convert abstract Runge-Kutta module to a particular case
@@ -141,19 +142,13 @@ module integrand = {
 module simpsons_over_func = simpsons(integrand) 
 
 
-def main (x0: f64) (y0: [n]f64) (n: i64): f64 =
+def main (x0: f64) (y0: [2]f64) (dx: f64) (n: i64): (f64, [2]f64, f64) =
     -- Test integration library
     --let bounds = integrand.set_bounds a b n
     --let sum = simpsons_over_func.compute_integral bounds
     --in sum -- Sum is not correct, splicing problem?
 
     -- Test Runge-Kutta
-    
-    let ic_arr = replicate n ( (x0, y0, dx) )
-    let y_arr = loop ic_arr for i < n - 1 do
-        let (x0,y0,dx) = ic_arr[i] 
-        let vec_ic = dxdt.make_ic {x = x0, y = y0, dx = dx}
-        let (x1,y1,dx) = runge_kutta_over_func.compute_y1 vec_ic
-        let ic_arr[i+1] = (x1,y1,dx)
-        in ic_arr
-    in unzip3(y_arr)
+    let vec_ic = dxdy.make_ic {x = x0, y= y0, dx = dx}
+    let y_arr = runge_kutta_over_func.compute_y1 vec_ic
+    in y_arr
