@@ -4,7 +4,6 @@ def max_arr_idx (x_arr: []f64): (f64, i64) =
     in (x_max, idx)
 
 def abs_value (x:f64): f64 = if x >=0 then x else -x
-    
 
 def linear_interpolation (x_arr: []f64) (y_arr: []f64) (x_eval: f64): (f64, f64) =
    let diff = map (\x -> x-x_eval) x_arr
@@ -27,10 +26,10 @@ module type derivative_vec = {
   type vec
   type t 
   type s
-  type l
-
-  val const: t
+  
+  val const1: t
   val const2: t
+
   val add: t -> t -> t
   val divide: t -> t -> t
   val multiply: t -> t -> t
@@ -57,45 +56,43 @@ module runge_kutta (f_input: derivative) = {
         in (x1, y1, dx)
 }
 
--- 4th order Runge-Kutta solver module with abstract dx/dy = f(x,y)
+-- 4th order Runge-Kutta solver module with abstract dx/dy = f(x,y0,y1,...,yn)
 module runge_kutta_vec (f_input: derivative_vec) = {
     open f_input
-    
+
     def compute_y1 [n] {x = xi: t, y = yi: [n]t, dx: t} : (t,[n]t,t) =
         let k1 = f_input.f {x = xi, y = yi}
-        let k2 = f_input.f {x = add xi (divide dx const), y = map2 (\x y -> add x (multiply (divide dx const) y)) yi k1}
-        let k3 = f_input.f {x = add xi (divide dx const), y = map2 (\x y -> add x (multiply (divide dx const) y)) yi k2}
+        let k2 = f_input.f {x = add xi (divide dx const1), y = map2 (\x y -> add x (multiply (divide dx const1) y)) yi k1}
+        let k3 = f_input.f {x = add xi (divide dx const1), y = map2 (\x y -> add x (multiply (divide dx const1) y)) yi k2}
         let k4 = f_input.f {x = add xi dx, y = map2 (\x y -> add x (multiply dx y)) yi k3}
         
-        let yf = map2(\x y -> add x (multiply (divide dx const2) y)) yi (map4 (\x y z w -> add (add (add x (multiply const y)) (multiply const z)) w) k1 k2 k3 k4)
+        let yf = map2(\x y -> add x (multiply (divide dx const2) y)) yi (map4 (\x y z w -> add (add (add x (multiply const1 y)) (multiply const1 z)) w) k1 k2 k3 k4)
         let xf = add xi dx
 
         in (xf, yf, dx)
 }
 
--- Exact form of dx/dy = f(x,y)
+-- Exact form of dx/dy = f(x,y0,y1,...,yn)
 module dxdy = {
     type t = f64
-    type l = i64
-
-    let n: l = 2
+    let n: i64 = 2
     type s = [n]f64
     type vec = {x: f64, y: [n]f64, dx: f64}
-    let const: t = 2.0
+
+    let const1: t = 2.0
     let const2: t = 6.0
+
+    let add (x: t) (y: t): t = x + y
+    let divide (x: t) (y: t): t = x/y
+    let multiply (x: t) (y: t): t = x*y
 
     def make_ic [n] {x: f64, y: [n]f64, dx: f64}: {x: f64, y: [n]f64, dx: f64} = {x, y, dx}
 
     def f [n] {x: f64, y: [n]f64}: [n]f64 = 
         let zero_arr = replicate n 0
-        let zero_arr[0] = x*y[0] + y[1]
-        let zero_arr[1] = y[1]
+        let zero_arr[0] = x*y[0] + y[1] -- First ODE
+        let zero_arr[1] = y[1]          -- Second ODE
         in zero_arr
-
-    let add (x: t) (y: t): t = x + y
-    let divide (x: t) (y: t): t = x/y
-    let multiply (x: t) (y: t): t = x*y
-    --in concat func_arr remain_arr
 }
 
 -- Convert abstract Runge-Kutta module to a particular case
@@ -115,8 +112,7 @@ module type integral = {
 module simpsons(f_input: integral) = {
     type t = f64
     type s = i64
-    type vec = (f64, f64, i64)
-
+    
     -- Taken from https://futhark-lang.org/examples/literate-basics.html
     def linspace (n: s) (start: t) (end: t) : [n]t =
         tabulate n (\i -> start + f64.i64 i * ((end-start)/f64.i64 n))
