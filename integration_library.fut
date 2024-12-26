@@ -1,7 +1,7 @@
 def max_arr_idx (x_arr: []f64) : (f64, i64) =
   let (x_max, idx) =
-    loop (x_max, idx) = (-999, 0)
-    for i < length (x_arr) do
+    loop (x_max, idx) = (x_arr[0], 0)
+    for i in 1..< length(x_arr) do
       if x_arr[i] > x_max then (x_arr[i], i) else (x_max, i)
   in (x_max, idx)
 
