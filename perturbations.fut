@@ -27,8 +27,8 @@ def first_crossing (Mh: []f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) : []f64 =
   let sigma_arr = sigma Mh Pk
   let nu = map2 (\x y -> x / y) delta_c sigma_arr
   in match kind_HMF
-     case #ST -> map3 (\x y z -> A * (2 * x ** 2 / f64.pi) ** (1 / 2) * (1 + nu ** (-2 * p)) * f64.exp (-nu ** 2 / 2))
-     case #Tinker -> map2 (\x y -> A * ((x / b) ** (-alpha) + 1) * f64.exp (-c / y ** 2)) sigma_arr sigma_arr
+     case #ST -> map3 (\x y z -> A_ST * (2 * x ** 2 / f64.pi) ** (1 / 2) * (1 + nu ** (-2 * p)) * f64.exp (-nu ** 2 / 2))
+     case #Tinker -> map2 (\x y -> A_Tinker * ((x / b) ** (-alpha) + 1) * f64.exp (-c / y ** 2)) sigma_arr sigma_arr
 
 -- Halo Mass Function
 def HMF (Mh: []f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) : []f64 =
@@ -36,21 +36,29 @@ def HMF (Mh: []f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) : []f64 =
   let first_crossing_arr = first_crossing Mh Pk
   in map3 (\x y z -> -rho_avg / x * y * z) Mh first_crossing_arr dsigma_arr
 
--- Function used in the Behroozi et al SMHR
+-- Function used in the Behroozi et al. SMHR
 def f_behroozi (x: f64) (z: f64) : f64 =
   -- Generalized polynomial that describes fitting parameters, for exact values
   -- refer to the constants.fut file or Behroozi et al. (2013)
-  let polynomial {l1 = l1: f64, l2 = l2: f64, l3 = l3: f64, l4 = l4: f64} = x
+  let a = 1 / (1 + z)
+  let nu = f64.exp (-4 * a ** 2)
+  let polynomial {l1 = l1: f64, l2 = l2: f64, l3 = l3: f64, l4 = l4: f64} = l1 + (l2 * (a - 1) + l3 * z) * nu + l4 * (a - 1)
   let alpha = polynomial alpha_record
   let delta = polynomial delta_record
   let gamma = polynomial gamma_record
   in -f64.log10 (10 ** (alpha * x) + 1) + delta * (f64.log10 (1 + f64.exp (x))) ** gamma / (1 + f64.exp (10 ** (-x)))
 
 -- Star Formation Efficiency for Double Power-Law, Behroozi et al. and EMERGE SMHR
-def eps_star (Mh: []f64) (kind_SMF: #double | #behroozi | #emerge) : []f64 =
-  match kind_SMF
-  case #double -> map2 (\x y -> eps0 / ((x / Mh0) ** gamma_lo + (y / Mh0) ** gamma_hi)) Mh Mh
-  case #behroozi -> 1
+def eps_star (Mh: []f64) (z: f64) (kind_SMF: #double | #behroozi | #emerge) : []f64 =
+  let a = 1 / (1 + z)
+  let nu = f64.exp (-4 * a ** 2)
+  let polynomial {l1 = l1: f64, l2 = l2: f64, l3 = l3: f64, l4 = l4: f64} = l1 + (l2 * (a - 1) + l3 * z) * nu + l4 * (a - 1)
+  let M1 = polynomial M1_record
+  let eps = polynomial eps_record
+  in match kind_SMF
+     case #double -> map2 (\x y -> eps0 / ((x / Mh0) ** gamma_lo + (y / Mh0) ** gamma_hi)) Mh Mh
+     case #behroozi -> map (\x -> 10 ** (f64.log10 (eps * M1) + f_behroozi f64.log10 (x / M1) z - f_behroozi 0 z))
+     case #emerge -> [] -- Add tabulated values 
 
 -- Exact form of dx/dy = f(x,y0,y1,...,yn)
 module dxdy = {
