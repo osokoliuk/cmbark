@@ -1,10 +1,12 @@
+-- Derive the maximum value and it's index (starts from 0) within a given array
 def max_arr_idx (x_arr: []f64) : (f64, i64) =
   let (x_max, idx) =
     loop (x_max, idx) = (x_arr[0], 0)
-    for i in 1..< length(x_arr) do
+    for i in 1..<length (x_arr) do
       if x_arr[i] > x_max then (x_arr[i], i) else (x_max, i)
   in (x_max, idx)
 
+-- Compute an absolute value for a float, self-explanatory
 def abs_value (x: f64) : f64 = if x >= 0 then x else -x
 
 def linear_interpolation (x_arr: []f64) (y_arr: []f64) (x_eval: f64) : (f64, f64) =
@@ -17,7 +19,6 @@ def linear_interpolation (x_arr: []f64) (y_arr: []f64) (x_eval: f64) : (f64, f64
   in (x_eval, y0 + (x_eval - x0) * (y1 - y0) / (x1 - x0))
 
 --Linear interpolation formula
-
 module type derivative = {
   type vec
   val f : {x: f64, y: f64} -> f64
