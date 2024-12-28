@@ -8,6 +8,9 @@ open constants
 def linspace (n: i64) (start: f64) (end: f64) : [n]f64 =
   tabulate n (\i -> start + f64.i64 i * ((end - start) / f64.i64 n))
 
+-- LCDM Hubble parameter
+def H (z: f64) : f64 = H0 * f64.sqrt (Omegam0 * (1 + z) ** 3 + Omegar0 * (1 + z) ** 4 + 1 - Omegam0 - Omegar0)
+
 def delta_c (z: f64) : f64 =
   let Dz = 1.0
   in delta
@@ -58,29 +61,14 @@ def eps_star (Mh: []f64) (z: f64) (kind_SMF: #double | #behroozi | #emerge) : []
   in match kind_SMF
      case #double -> map2 (\x y -> eps0 / ((x / Mh0) ** gamma_lo + (y / Mh0) ** gamma_hi)) Mh Mh
      case #behroozi -> map (\x -> 10 ** (f64.log10 (eps * M1) + f_behroozi f64.log10 (x / M1) z - f_behroozi 0 z))
-     case #emerge -> [] -- Add tabulated values 
+     -- Add tabulated values
+     case #emerge -> []
 
--- Exact form of dx/dy = f(x,y0,y1,...,yn)
-module dxdy = {
-  type t = f64
-  def n : i64 = 2
-  type s = [n]f64
-  type vec = {x: f64, y: [n]f64, dx: f64}
+-- Mass Accretion Rate as per Fakhouri et al. 2010
+def MAR (Mh: []f64) (z: f64) : f64 =
+  map (\x -> 25.3 * (x / 1e12) ** 1.1 * (1 + 0.65 * z) * (H z) / H0) Mh
 
-  def const1 : t = 2.0
-  def const2 : t = 6.0
-
-  def add (x: t) (y: t) : t = x + y
-  def divide (x: t) (y: t) : t = x / y
-  def multiply (x: t) (y: t) : t = x * y
-
-  def make_ic [n] {x = x: f64, y = y: [n]f64, dx = dx: f64} : {x: f64, y: [n]f64, dx: f64} = {x, y, dx}
-
-  def f [n] {x = x: f64, y = y: [n]f64} : [n]f64 =
-    let zero_arr = replicate n 0
-    let zero_arr[0] = x * y[0] + y[1]
-    -- First ODE
-    let zero_arr[1] = y[1]
-    -- Second ODE
-    in zero_arr
-}
+def SFR (Mh: f64) (z: f64) (kind_SMF: #double | #behroozi | #emerge) : f64 =
+  let eps_star_arr = eps_star Mh z kind_SMF
+  let MAR_arr = MAR Mh z
+  in map2 (\x y -> x * Omegab0 / Omegam0 * y) eps_star_arr MAR_arr

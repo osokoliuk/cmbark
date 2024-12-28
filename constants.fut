@@ -36,4 +36,8 @@ module constants = {
   def Mh0 : f64 = 2.8e11
   def gamma_lo : f64 = 0.49
   def gamma_hi : f64 = -0.61
+
+  def alpha_MAR : f64 = 0.24
+  def beta_MAR : f64 = -0.75
 }
+
