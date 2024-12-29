@@ -9,14 +9,14 @@ def max_arr_idx (x_arr: []f64) : (f64, i64) =
 -- Compute an absolute value for a float, self-explanatory
 def abs_value (x: f64) : f64 = if x >= 0 then x else -x
 
-def linear_interpolation (x_arr: []f64) (y_arr: []f64) (x_eval: f64) : (f64, f64) =
+def linear_interpolation (x_arr: []f64) (y_arr: []f64) (x_eval: f64) : f64 =
   let diff = map (\x -> x - x_eval) x_arr
   let (x_max, idx) = max_arr_idx diff
   let ((x0, x1), (y0, y1)) =
     if x_max > x_eval
     then ((x_arr[idx - 1], x_max), (y_arr[idx - 1], y_arr[idx]))
     else ((x_max, x_arr[idx + 1]), (y_arr[idx], y_arr[idx + 1]))
-  in (x_eval, y0 + (x_eval - x0) * (y1 - y0) / (x1 - x0))
+  in y0 + (x_eval - x0) * (y1 - y0) / (x1 - x0)
 
 --Linear interpolation formula
 module type derivative = {

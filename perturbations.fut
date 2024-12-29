@@ -35,7 +35,8 @@ def first_crossing (Mh: []f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) : []f64 =
 
 -- Halo Mass Function
 def HMF (Mh: []f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) : []f64 =
-  let dsigma_arr = jvp (sigma Mh Pk) Mh
+  let log_sigma = map f64.log sigma (Mh Pk)
+  let dsigma_arr = jvp log_sigma (map f64.log Mh)
   let first_crossing_arr = first_crossing Mh Pk
   in map3 (\x y z -> -rho_avg / x * y * z) Mh first_crossing_arr dsigma_arr
 
@@ -72,3 +73,27 @@ def SFR (Mh: f64) (z: f64) (kind_SMF: #double | #behroozi | #emerge) : f64 =
   let eps_star_arr = eps_star Mh z kind_SMF
   let MAR_arr = MAR Mh z
   in map2 (\x y -> x * Omegab0 / Omegam0 * y) eps_star_arr MAR_arr
+
+-- Exact form of SFRD integrand
+module integrand = {
+  type t = f64
+  type s = i64
+  type vec = (f64, f64, i64)
+
+  def set_bounds (a: f64) (b: f64) (n: i64) = (a, b, n)
+
+  def f (x: t) : t = linear_interpolation mass_arr integrand_arr x
+}
+
+module simpsons_over_func = simpsons (integrand)
+
+-- Star Formation Rate Density
+def SFRD (z: f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) (kind_SMF: #double | #behroozi | #emerge) : f64 =
+  -- Initialize array for halo masses with M_min ~ 10^6 [Msun], M_inf ~ 10^18 [Msun]
+  let mass_arr = linspace 1000 1e6 1e18
+  -- Derive dn/dM from HMF (dn/dlogM)
+  let hmf_arr = map f64.log HMF (mass_arr Pk kind_HMF)
+  let sfr_arr = SFR mass_arr z kind_SMF
+  let integrand_arr = map2 (\x y -> x * y) hmf_arr sfr_arr
+  let bounds = integrand.set_bounds 1e6 1e18 1000
+  in simpsons_over_func.compute_integral bounds

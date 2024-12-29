@@ -5,6 +5,13 @@ import "constants"
 -- Open constants module to import all of the important quantities
 open constants
 
+-- Initial Mass Function
+def IMF (m: f64) (kind_IMF: #Kroupa | #Salpeter| #Top_heavy): f64 = 
+  match kind_IMF:
+  case #Kroupa:
+
+def O_w
+
 -- Exact form of dx/dy = f(x,y0,y1,...,yn)
 module IGM_ISM_ODE = {
   type t = f64
@@ -23,7 +30,7 @@ module IGM_ISM_ODE = {
 
   def f [n] {x = x: f64, y = y: [n]f64} : [n]f64 =
     let zero_arr = replicate n 0
-    let zero_arr[0] = x * y[0] + y[1]
+    let zero_arr[0] = -y[]
     -- First ODE
     let zero_arr[1] = y[1]
     -- Second ODE
