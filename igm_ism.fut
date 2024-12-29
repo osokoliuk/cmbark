@@ -5,12 +5,27 @@ import "constants"
 -- Open constants module to import all of the important quantities
 open constants
 
--- Initial Mass Function
-def IMF (m: f64) (kind_IMF: #Kroupa | #Salpeter| #Top_heavy): f64 = 
-  match kind_IMF:
-  case #Kroupa:
+-- Initial Mass Function (proportional to)
+def IMF (m: f64) (kind_IMF: #Kroupa | #Salpeter | #Chabrier) : f64 =
+  match kind_IMF
+  -- Kroupa et al. 2001 IMF (broken power-law)
+  case #Kroupa ->
+    if m < 0.08
+    then k0 * m ** alpha0
+    else if m >= 0.08 and m < 0.5
+    then k1 * m ** alpha1
+    else if m >= 0.5
+    then k2 * m ** alpha2
+    else 0
+  -- Salpeter et al. 1955 IMF (single power-law)
+  case #Salpeter -> m ** (-2.35)
+  -- Chabrier et al. 2003 (log-normal) converted to [Mpc^-3]
+  case #Chabrier ->
+    if m < 1
+    then A_ch * f64.exp (-(f64.log m - log center_Ch) ** 2 / (2 * sigma_Ch ** 2))
+    else m ** (-1.3)
 
-def O_w
+--def O_w
 
 -- Exact form of dx/dy = f(x,y0,y1,...,yn)
 module IGM_ISM_ODE = {

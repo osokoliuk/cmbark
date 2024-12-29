@@ -39,5 +39,19 @@ module constants = {
 
   def alpha_MAR : f64 = 0.24
   def beta_MAR : f64 = -0.75
+
+  def alpha0: f64 = -0.3
+  def alpha1: f64 = -1.3
+  def alpha2: f64 = -2.3
+  def m1: f64 = 0.08
+  def m2: f64 = 0.5
+  def m3: f64 = 1
+  def k0: f64 = 1
+  def k1: f64 = k0*m1**(alpha0 - alpha1)
+  def k2: f64 = k1*m2**(alpha1 - alpha2)
+
+  def A_Ch: f64 = 0.086
+  def sigma_Ch: f64 = 0.57
+  def center_Ch: f64 = 0.22
 }
 
