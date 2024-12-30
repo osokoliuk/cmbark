@@ -11,9 +11,25 @@ def linspace (n: i64) (start: f64) (end: f64) : [n]f64 =
 -- LCDM Hubble parameter
 def H (z: f64) : f64 = H0 * f64.sqrt (Omegam0 * (1 + z) ** 3 + Omegar0 * (1 + z) ** 4 + 1 - Omegam0 - Omegar0)
 
+-- Exact form of SFRD integrand
+module integrand_growth = {
+  type t = f64
+  type s = i64
+  type vec = (f64, f64, i64)
+
+  def set_bounds (a: f64) (b: f64) (n: i64) = (a, b, n)
+
+  def f (x: t) : t = (Omegam0*x**(-3))**gamma_growth/x
+}
+
+module simpsons_growth = simpsons (integrand_growth)
+
+-- Approximation for a critical overdensity treshold with growth index
+-- D(z) taken from Nesseris et al. 2008
 def delta_c (z: f64) : f64 =
-  let Dz = 1.0
-  in delta
+  let bounds = integrand_growth.set_bounds 1.0 (1.0/(1.0+z)) 1000
+  let Dz = f64.exp(simpsons_growth.compute_integral bounds)
+  in delta_c0/Dz
 
 def Wf (k: []f64) (R: f64) : []f64 =
   let kR = map (* R) k
@@ -23,7 +39,7 @@ def Wf (k: []f64) (R: f64) : []f64 =
 def sigma_M (Mh: []f64) (Pk: []f64) : ([]f64) =
   let R = (2.0 * GN * Mh / (Omegam0 * H0 ** 2 * c ** 3)) ** (1 / 2)
   let sigma2 = simpsons (map3 (\x y z -> x ** 2 / (2.0 * f64.pi ** 2) * y * z ** 2) k_arr Pk Wf (k_arr) (R))
-  in map (\x -> x ** (1 / 2)) sigma2
+  in map (\x -> x ** (1.0 / 2.0)) sigma2
 
 -- First crossing distributions for Sheth-Tormen and Tinker halo mass functions
 def first_crossing (Mh: []f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) : []f64 =
@@ -44,30 +60,30 @@ def HMF (Mh: []f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) : []f64 =
 def f_behroozi (x: f64) (z: f64) : f64 =
   -- Generalized polynomial that describes fitting parameters, for exact values
   -- refer to the constants.fut file or Behroozi et al. (2013)
-  let a = 1 / (1 + z)
+  let a = 1.0 / (1.0 + z)
   let nu = f64.exp (-4 * a ** 2)
-  let polynomial {l1 = l1: f64, l2 = l2: f64, l3 = l3: f64, l4 = l4: f64} = l1 + (l2 * (a - 1) + l3 * z) * nu + l4 * (a - 1)
+  let polynomial {l1 = l1: f64, l2 = l2: f64, l3 = l3: f64, l4 = l4: f64} = l1 + (l2 * (a - 1.0) + l3 * z) * nu + l4 * (a - 1.0)
   let alpha = polynomial alpha_record
   let delta = polynomial delta_record
   let gamma = polynomial gamma_record
-  in -f64.log10 (10 ** (alpha * x) + 1) + delta * (f64.log10 (1 + f64.exp (x))) ** gamma / (1 + f64.exp (10 ** (-x)))
+  in -f64.log10 (10 ** (alpha * x) + 1.0) + delta * (f64.log10 (1.0 + f64.exp (x))) ** gamma / (1 + f64.exp (10 ** (-x)))
 
 -- Star Formation Efficiency for Double Power-Law, Behroozi et al. and EMERGE SMHR
 def eps_star (Mh: []f64) (z: f64) (kind_SMF: #double | #behroozi | #emerge) : []f64 =
-  let a = 1 / (1 + z)
-  let nu = f64.exp (-4 * a ** 2)
-  let polynomial {l1 = l1: f64, l2 = l2: f64, l3 = l3: f64, l4 = l4: f64} = l1 + (l2 * (a - 1) + l3 * z) * nu + l4 * (a - 1)
+  let a = 1.0 / (1.0 + z)
+  let nu = f64.exp (-4.0 * a ** 2.0)
+  let polynomial {l1 = l1: f64, l2 = l2: f64, l3 = l3: f64, l4 = l4: f64} = l1 + (l2 * (a - 1.0) + l3 * z) * nu + l4 * (a - 1.0)
   let M1 = polynomial M1_record
   let eps = polynomial eps_record
   in match kind_SMF
      case #double -> map2 (\x y -> eps0 / ((x / Mh0) ** gamma_lo + (y / Mh0) ** gamma_hi)) Mh Mh
-     case #behroozi -> map (\x -> 10 ** (f64.log10 (eps * M1) + f_behroozi f64.log10 (x / M1) z - f_behroozi 0 z))
+     case #behroozi -> map (\x -> 10 ** (f64.log10 (eps * M1) + f_behroozi f64.log10 (x / M1) z - f_behroozi 0.0 z))
      -- Add tabulated values
      case #emerge -> []
 
 -- Mass Accretion Rate as per Fakhouri et al. 2010
 def MAR (Mh: []f64) (z: f64) : f64 =
-  map (\x -> 25.3 * (x / 1e12) ** 1.1 * (1 + 0.65 * z) * (H z) / H0) Mh
+  map (\x -> 25.3 * (x / 1e12) ** 1.1 * (1.0 + 0.65 * z) * (H z) / H0) Mh
 
 def SFR (Mh: f64) (z: f64) (kind_SMF: #double | #behroozi | #emerge) : f64 =
   let eps_star_arr = eps_star Mh z kind_SMF
@@ -75,7 +91,7 @@ def SFR (Mh: f64) (z: f64) (kind_SMF: #double | #behroozi | #emerge) : f64 =
   in map2 (\x y -> x * Omegab0 / Omegam0 * y) eps_star_arr MAR_arr
 
 -- Exact form of SFRD integrand
-module integrand = {
+module integrand_SFRD = {
   type t = f64
   type s = i64
   type vec = (f64, f64, i64)
@@ -85,7 +101,7 @@ module integrand = {
   def f (x: t) : t = linear_interpolation mass_arr integrand_arr x
 }
 
-module simpsons_over_func = simpsons (integrand)
+module simpsons_SFRD = simpsons (integrand_SFRD)
 
 -- Star Formation Rate Density
 def SFRD (z: f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) (kind_SMF: #double | #behroozi | #emerge) : f64 =
@@ -95,5 +111,5 @@ def SFRD (z: f64) (Pk: []f64) (kind_HMF: #ST | #Tinker) (kind_SMF: #double | #be
   let hmf_arr = map f64.log HMF (mass_arr Pk kind_HMF)
   let sfr_arr = SFR mass_arr z kind_SMF
   let integrand_arr = map2 (\x y -> x * y) hmf_arr sfr_arr
-  let bounds = integrand.set_bounds 1e6 1e18 1000
-  in simpsons_over_func.compute_integral bounds
+  let bounds = integrand_SFRD.set_bounds 1e6 1e18 1000
+  in simpsons_SFRD.compute_integral bounds

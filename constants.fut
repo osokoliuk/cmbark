@@ -31,6 +31,8 @@ module constants = {
   def MsolMpc3_to_gcm3 : f64 = 6.77e-23
   def alpha_B : f64 = 2.5 * 1e-13
   def sigma_T : f64 = 6.6525e-25
+  def gamma_growth: f64 = 6/11
+  def delta_c0: f64 = 1.686
 
   def eps0 : f64 = 0.05
   def Mh0 : f64 = 2.8e11
